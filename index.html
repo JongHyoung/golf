@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>⛳ 99회 스크린골프대회</title>
+<title>⛳ 99회 천하제일골프대회</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
 :root{
@@ -64,8 +64,8 @@ label{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-botto
 </head>
 <body>
 <div class="hdr">
-  <h1>⛳ 99회 스크린골프대회</h1>
-  <p>에버(핸디캡) 자동계산 · 최근 5대회 평균−72 &nbsp;|&nbsp; v1.0</p>
+  <h1>⛳ 99회 천하제일골프대회</h1>
+  <p>핸디(핸디캡) 자동계산 · 최근 5대회 평균−72 &nbsp;|&nbsp; v1.0</p>
 </div>
 <div class="tabs">
   <div class="tab on" onclick="go('ever')">에버표</div>
@@ -74,7 +74,7 @@ label{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-botto
 </div>
 
 <div id="pg-ever" class="pg on">
-  <div class="hint">에버 = 최근 참가 5대회 평균타수 − 72 · <span style="background:var(--evc);padding:1px 5px;border-radius:3px;font-weight:700;">초록셀</span> = 에버 계산 포함</div>
+  <div class="hint">핸디 = 최근 참가 5대회 평균타수 − 72 · <span style="background:var(--evc);padding:1px 5px;border-radius:3px;font-weight:700;">초록셀</span> = 핸디 계산 포함</div>
   <div class="card">
     <div class="ctitle">📊 에버계산표</div>
     <div class="twrap" id="ever-wrap"></div>
@@ -131,7 +131,7 @@ function getEverInfo(member,contests){
   const r5=played.slice(-5);
   if(!r5.length) return {ever:null,avg:null,count:0,cids:new Set()};
   const avg=r5.reduce((s,c)=>s+c.scores[member],0)/r5.length;
-  return {ever:+(avg-PAR).toFixed(1), avg:+avg.toFixed(1), count:r5.length, cids:new Set(r5.map(c=>c.cid))};
+  return {ever:Math.floor(avg-PAR), avg:+avg.toFixed(1), count:r5.length, cids:new Set(r5.map(c=>c.cid))};
 }
 
 // ── 삭제 (공통) ───────────────────────────────────────────
@@ -166,14 +166,37 @@ function renderEverTable(){
       ? '<span style="color:#bbb;font-size:10px">(초기)</span>'
       : c.date.replace(/-/g,'/').replace(/^(\d{4})\/(\d{2})\/(\d{2})$/,'$1/$2/$3');
     h+=`<tr><td class="tn" style="text-align:center;">${label}</td>`;
+    // 이 대회 직전까지의 핸디 계산 (이 대회 제외)
+    const contestsBeforeThis = contests.filter(x=>x.cid!==c.cid);
+    const preHandy={};
+    MEMBERS.forEach(m=>{
+      const ev=getEverInfo(m,contestsBeforeThis);
+      preHandy[m]=ev.ever!==null?ev.ever:null;
+    });
+
+    // 참가자 네트스코어 계산 후 등수 산정
+    const participants=colM.filter(m=>typeof c.scores[m]==='number'&&preHandy[m]!==null);
+    const nets={};
+    participants.forEach(m=>{ nets[m]=c.scores[m]-Math.floor(preHandy[m]); });
+    const ranked=[...participants].sort((a,b)=>{
+      if(nets[a]!==nets[b]) return nets[a]-nets[b];
+      return preHandy[a]-preHandy[b]; // 동타면 핸디 낮은 순
+    });
+
     colM.forEach(m=>{
       const sc=c.scores[m];
       if(typeof sc==='number'){
         const over=sc-PAR, os=over>=0?`+${over}`:`${over}`;
         const cls=evInfo[m].cids.has(c.cid)?'tev':'ts';
+        // 등수 표시
+        const rankIdx=ranked.indexOf(m);
+        const rankStr=rankIdx===0?'🥇':rankIdx===1?'🥈':rankIdx===2?'🥉':(rankIdx+1)+'위';
+        const handyStr=preHandy[m]!==null?`<span style="font-size:9px;color:#888">H:${Math.floor(preHandy[m])}</span>`:'';
+        const netStr=nets[m]!==undefined?`<span style="font-size:9px;color:#555">N:${nets[m]}</span>`:'';
         h+=`<td class="${cls}" data-cid="${c.cid}" data-member="${m}">
-          <span style="font-size:14px">${sc}</span><br>
-          <span style="font-size:10px;color:#666">${os}</span></td>`;
+          <div style="font-size:14px;font-weight:700">${sc} ${rankStr}</div>
+          <div style="font-size:10px;color:#666">${os}&nbsp;${handyStr}&nbsp;${netStr}</div>
+        </td>`;
       } else {
         h+=`<td class="tm">미참</td>`;
       }
@@ -187,7 +210,7 @@ function renderEverTable(){
   colM.forEach(m=>{ const e=evInfo[m]; h+=`<td class="tavg">${e.avg!==null?e.avg:'—'}</td>`; });
   h+=`<td></td></tr>`;
   // 에버
-  h+=`<tr><td class="tn">에버</td>`;
+  h+=`<tr><td class="tn">핸디</td>`;
   colM.forEach(m=>{ const e=evInfo[m]; h+=`<td class="tever">${e.ever!==null?e.ever:'—'}</td>`; });
   h+=`<td></td></tr>`;
   // 1위대비
@@ -201,6 +224,8 @@ function renderEverTable(){
     });
     h+=`<td></td></tr>`;
   }
+
+
   h+='</tbody></table>';
   document.getElementById('ever-wrap').innerHTML=h;
 
@@ -258,7 +283,7 @@ function previewSc(i){
   const over=v-PAR, os=over>=0?`+${over}`:`${over}`;
   const tmp=[...load(),{cid:'tmp',date:'9999-01-01',scores:{[m]:v}}];
   const ev=getEverInfo(m,tmp);
-  sh.textContent=`${os} · 예상 에버 ${ev.ever}`;
+  sh.textContent=`${os} · 예상 핸디 ${ev.ever!==null?Math.floor(ev.ever):ev.ever}`;
 }
 
 function saveRound(){
