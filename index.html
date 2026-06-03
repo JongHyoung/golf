@@ -65,7 +65,7 @@ label{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-botto
 <body>
 <div class="hdr">
   <h1>⛳ 99회 천하제일골프대회</h1>
-  <p>핸디(핸디캡) 자동계산 · 최근 5대회 평균−72 &nbsp;|&nbsp; v1.0</p>
+  <p>핸디(핸디캡) 자동계산 · 최근 5대회 평균−72 &nbsp;|&nbsp; v1.2</p>
 </div>
 <div class="tabs">
   <div class="tab on" onclick="go('ever')">에버표</div>
@@ -114,6 +114,7 @@ const SEED=[
   {cid:'c03',date:'2024-03-01',scores:{이선용:95, 이종형:78,김용태:92}},
   {cid:'c04',date:'2024-04-01',scores:{이선용:92, 이종형:82,김용태:89}},
   {cid:'c05',date:'2024-05-01',scores:{이선용:96, 이종형:83,김용태:89}},
+  {cid:'c06',date:'2026-06-03',scores:{이선용:111,이종형:89,김용태:95}},
 ];
 
 function load(){
@@ -190,7 +191,7 @@ function renderEverTable(){
         const cls=evInfo[m].cids.has(c.cid)?'tev':'ts';
         // 등수 표시
         const rankIdx=ranked.indexOf(m);
-        const rankStr=rankIdx===0?'🥇':rankIdx===1?'🥈':rankIdx===2?'🥉':(rankIdx+1)+'위';
+        const rankStr=rankIdx===0?'🏅':rankIdx===1?'🥈':rankIdx===2?'💀':(rankIdx+1)+'위';
         const handyStr=preHandy[m]!==null?`<span style="font-size:9px;color:#888">H:${Math.floor(preHandy[m])}</span>`:'';
         const netStr=nets[m]!==undefined?`<span style="font-size:9px;color:#555">N:${nets[m]}</span>`:'';
         h+=`<td class="${cls}" data-cid="${c.cid}" data-member="${m}">
@@ -257,41 +258,46 @@ function editCell(cid,member){
 // ── 입력 폼 ───────────────────────────────────────────────
 function renderInputForm(){
   const contests=load();
-  document.getElementById('minputs').innerHTML=MEMBERS.map((m,i)=>{
+  const sortedM=[...MEMBERS].sort((a,b)=>{
+    const ea=getEverInfo(a,contests).ever;
+    const eb=getEverInfo(b,contests).ever;
+    if(ea===null) return 1; if(eb===null) return -1;
+    return ea-eb;
+  });
+  document.getElementById('minputs').innerHTML=sortedM.map(m=>{
     const ev=getEverInfo(m,contests);
     return`<div class="mrow">
       <div style="flex:1">
         <div style="font-size:15px;font-weight:700">${m}</div>
-        <div style="font-size:11px;color:var(--sub)">현재 에버 ${ev.ever!==null?ev.ever:'—'}</div>
+        <div style="font-size:11px;color:var(--sub)">현재 핸디 ${ev.ever!==null?ev.ever:'—'}</div>
       </div>
       <div>
-        <input type="number" id="sc${i}" placeholder="타수" min="60" max="150" oninput="previewSc(${i})">
-        <div class="shint" id="sh${i}"></div>
+        <input type="number" id="sc${m}" placeholder="타수" min="60" max="150" oninput="previewSc('${m}')">
+        <div class="shint" id="sh${m}"></div>
         <div class="abl">비워두면 미참가</div>
       </div>
     </div>`;
   }).join('');
 }
 
-function previewSc(i){
-  const m=MEMBERS[i];
-  const el=document.getElementById('sc'+i);
-  const sh=document.getElementById('sh'+i);
+function previewSc(m){
+  const el=document.getElementById('sc'+m);
+  const sh=document.getElementById('sh'+m);
   if(!el||!sh) return;
   const v=parseInt(el.value);
   if(!v||v<60){sh.textContent='';return;}
   const over=v-PAR, os=over>=0?`+${over}`:`${over}`;
   const tmp=[...load(),{cid:'tmp',date:'9999-01-01',scores:{[m]:v}}];
   const ev=getEverInfo(m,tmp);
-  sh.textContent=`${os} · 예상 핸디 ${ev.ever!==null?Math.floor(ev.ever):ev.ever}`;
+  sh.textContent=`${os} · 예상 핸디 ${ev.ever!==null?ev.ever:'—'}`;
 }
 
 function saveRound(){
   const date=document.getElementById('idate').value;
   if(!date){showToast('날짜를 입력하세요');return;}
   const scores={};
-  MEMBERS.forEach((m,i)=>{
-    const el=document.getElementById('sc'+i);
+  MEMBERS.forEach(m=>{
+    const el=document.getElementById('sc'+m);
     const v=parseInt(el?el.value:'');
     if(v>=60&&v<=150) scores[m]=v;
   });
@@ -300,9 +306,9 @@ function saveRound(){
   const contests=load();
   contests.push({cid,date,scores});
   save(contests);
-  MEMBERS.forEach((_,i)=>{
-    const el=document.getElementById('sc'+i);
-    const sh=document.getElementById('sh'+i);
+  MEMBERS.forEach(m=>{
+    const el=document.getElementById('sc'+m);
+    const sh=document.getElementById('sh'+m);
     if(el) el.value='';
     if(sh) sh.textContent='';
   });
